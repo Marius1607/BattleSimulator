@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Battlefield Map</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    
+  <canvas id="battlefield"></canvas>
+  
+  <div class="troop-count-panel">
+    <h3>Troop Count</h3>
+    <div class="troop-stats">
+      <div class="troop-stat">
+        <span class="troop-label allied">Allied:</span>
+        <span class="troop-count allied-count" id="alliedTroops">0</span>
+      </div>
+      <div class="troop-stat">
+        <span class="troop-label enemy">Enemy:</span>
+        <span class="troop-count enemy-count" id="enemyTroops">0</span>
+      </div>
+      <div class="troop-stat">
+        <span class="troop-label">Total:</span>
+        <span class="troop-count" id="totalTroops">0</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="control-panel">
+    
+    <!-- Army Management Section -->
+    <div class="control-section">
+      <h3>Army Management</h3>
+      <button class="btn primary" id="createArmyBtn">Create Army</button>
+      <button class="btn danger" id="removeTroopsBtn">Remove Troops</button>
+      <button class="btn" id="inspectTroopsBtn">Inspect Troops</button>
+      <button class="btn" id="exportArmyBtn">Export Army</button>
+      <button class="btn" id="importArmyBtn">Import Army</button>
+    </div>
+    
+    <!-- Battalion Creation Section (Hidden by default) -->
+    <div class="control-section hidden" id="battalionCreationSection">
+      <h3>Create Battalion</h3>
+      
+      <!-- Army Type Selection -->
+      <div class="form-group">
+        <label>Army Type</label>
+        <div class="btn-group">
+          <button class="btn" id="alliedBtn">Allied</button>
+          <button class="btn danger" id="enemyBtn">Enemy</button>
+        </div>
+      </div>
+      
+      <!-- Unit Type Selection -->
+      <div class="form-group">
+        <label>Unit Type</label>
+        <div class="unit-type-selector">
+          <div class="unit-type-btn active" data-type="footsoldiers">
+            <div>Foot Soldiers</div>
+            <small>Square</small>
+          </div>
+          <div class="unit-type-btn" data-type="cavalry">
+            <div>Cavalry</div>
+            <small>Hexagon</small>
+          </div>
+          <div class="unit-type-btn" data-type="ranged">
+            <div>Ranged</div>
+            <small>Diamond</small>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Battalion Properties -->
+      <div class="form-group">
+        <label for="soldiersInput">Soldiers</label>
+        <input type="number" id="soldiersInput" min="1" max="1000" value="100">
+      </div>
+      
+      <div class="form-group">
+        <label for="disciplineInput">Discipline (1-10)</label>
+        <input type="number" id="disciplineInput" min="1" max="10" value="5">
+      </div>
+      
+      <div class="form-group">
+        <label for="equipmentInput">Equipment (1-10)</label>
+        <input type="number" id="equipmentInput" min="1" max="10" value="5">
+      </div>
+      
+      <div class="form-group">
+        <label for="rangeInput">Range</label>
+        <input type="number" id="rangeInput" min="1" max="10" value="1">
+      </div>
+      
+      <div class="form-group">
+        <label for="moraleInput">Morale (1-10)</label>
+        <input type="number" id="moraleInput" min="1" max="10" value="5">
+      </div>
+      
+      <div class="form-group">
+        <label for="speedInput">Speed (1-10)</label>
+        <input type="number" id="speedInput" min="1" max="10" value="3">
+      </div>
+      
+      <!-- Battalion Preview -->
+      <div class="battalion-preview">
+        <h4>Battalion Preview</h4>
+        <div class="stat">
+          <span class="stat-label">Type:</span>
+          <span class="stat-value" id="previewType">Foot Soldiers</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Soldiers:</span>
+          <span class="stat-value" id="previewSoldiers">100</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Discipline:</span>
+          <span class="stat-value" id="previewDiscipline">5</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Equipment:</span>
+          <span class="stat-value" id="previewEquipment">5</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Range:</span>
+          <span class="stat-value" id="previewRange">1</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Morale:</span>
+          <span class="stat-value" id="previewMorale">5</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Speed:</span>
+          <span class="stat-value" id="previewSpeed">3</span>
+        </div>
+      </div>
+      
+      <!-- Action Buttons -->
+      <div class="btn-group">
+        <button class="btn" id="cancelBattalionBtn">Cancel</button>
+      </div>
+    </div>
+    
+    <!-- Current Mode Section -->
+    <div class="control-section">
+      <h3>Current Mode</h3>
+      <div id="currentModeDisplay">Viewing Battlefield</div>
+    </div>
+  </div>
+  
+  <!-- Battalion Stats Modal -->
+  <div id="battalionModal" class="modal">
+    <span class="modal-close">&times;</span>
+    <h3>Battalion Details</h3>
+    <div class="stat">
+      <span class="stat-label">Type:</span>
+      <select class="stat-value" id="modalType">
+        <option value="footsoldiers">Foot Soldiers</option>
+        <option value="cavalry">Cavalry</option>
+        <option value="ranged">Ranged</option>
+      </select>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Army:</span>
+      <select class="stat-value" id="modalArmyType">
+        <option value="allied">Allied</option>
+        <option value="enemy">Enemy</option>
+      </select>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Soldiers:</span>
+      <input type="number" class="stat-value" id="modalSoldiers" min="1" max="1000">
+    </div>
+    <div class="stat">
+      <span class="stat-label">Discipline:</span>
+      <input type="number" class="stat-value" id="modalDiscipline" min="1" max="10">
+    </div>
+    <div class="stat">
+      <span class="stat-label">Equipment:</span>
+      <input type="number" class="stat-value" id="modalEquipment" min="1" max="10">
+    </div>
+    <div class="stat">
+      <span class="stat-label">Range:</span>
+      <input type="number" class="stat-value" id="modalRange" min="1" max="10">
+    </div>
+    <div class="stat">
+      <span class="stat-label">Morale:</span>
+      <input type="number" class="stat-value" id="modalMorale" min="1" max="10">
+    </div>
+    <div class="stat">
+      <span class="stat-label">Speed:</span>
+      <input type="number" class="stat-value" id="modalSpeed" min="1" max="10">
+    </div>
+    <div class="stat">
+      <span class="stat-label">Position:</span>
+      <span class="stat-value" id="modalPosition">-</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="cancelEditBtn">Cancel</button>
+      <button class="btn primary" id="saveEditBtn">Save Changes</button>
+    </div>
+  </div>
+  
+  <!-- Hidden file input for import -->
+  <input type="file" id="importFileInput" accept=".json" style="display: none;">
+  
+  <!-- Load Scripts -->
+  <script src="Battalion.js"></script>
+  <script src="gameLogic.js"></script>
+  <script src="uiController.js"></script>
+  <script src="dataManager.js"></script>
+  
+  <!-- Initialize Application -->
+  <script>
+    // Initialize the application when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+      const canvas = document.getElementById('battlefield');
+      initializeUI(canvas);
+    });
+  </script>
+</body>
+</html>
