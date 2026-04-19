@@ -17,7 +17,8 @@ let gameState = {
   placementPreview: null,
   selectedBattalion: null,
   selectedBattalions: [],
-  movementRange: []
+  movementRange: [],
+  battleMode: false
 };
 
 // Calculate tile size based on screen height
@@ -95,6 +96,19 @@ function isTileOccupied(x, y) {
   return gameState.battalions.some(b => b.x === x && b.y === y);
 }
 
+// Check if tile is occupied, excluding specific battalions
+function isTileOccupiedExcluding(x, y, excludeBattalions) {
+  return gameState.battalions.some(b => {
+    if (b.x === x && b.y === y) {
+      // Check if this battalion should be excluded
+      return !excludeBattalions.some(excludeB => 
+        excludeB.x === b.x && excludeB.y === b.y && excludeB.type === b.type
+      );
+    }
+    return false;
+  });
+}
+
 // Create battalion from current configuration
 function createBattalionFromConfig() {
   return {
@@ -159,30 +173,68 @@ function moveBattalion(battalion, newX, newY) {
 }
 
 // Move multiple battalions maintaining relative positions
-function moveMultipleBattalions(battalions, targetX, targetY) {
+function moveMultipleBattalions(battalions, targetX, targetY, referenceBattalion = null) {
   console.log(`Moving ${battalions.length} battalions to target (${targetX}, ${targetY})`);
   
-  // Calculate the offset from the first selected battalion to target
-  const firstBattalion = battalions[0];
-  const deltaX = targetX - firstBattalion.x;
-  const deltaY = targetY - firstBattalion.y;
+  // Use the reference battalion if provided, otherwise use the first one
+  const refBattalion = referenceBattalion || battalions[0];
+  const deltaX = targetX - refBattalion.x;
+  const deltaY = targetY - refBattalion.y;
   
-  // Move each battalion by the same offset to maintain formation
-  battalions.forEach((battalion, index) => {
+  // First, validate all moves before executing any
+  const plannedMoves = [];
+  let allCanMove = true;
+  
+  for (const battalion of battalions) {
     const oldX = battalion.x;
     const oldY = battalion.y;
     const newX = oldX + deltaX;
     const newY = oldY + deltaY;
     
-    // Check if new position is within bounds and not occupied
-    if (newX >= 0 && newX < GRID_SIZE && newY >= 0 && newY < GRID_SIZE && !isTileOccupied(newX, newY)) {
-      battalion.x = newX;
-      battalion.y = newY;
-      console.log(`Moved ${battalion.type} battalion from (${oldX}, ${oldY}) to (${newX}, ${newY})`);
-    } else {
-      console.log(`Could not move ${battalion.type} battalion to (${newX}, ${newY}) - blocked or out of bounds`);
+    // Check if new position is within bounds
+    let canMove = newX >= 0 && newX < GRID_SIZE && newY >= 0 && newY < GRID_SIZE;
+    if (canMove) {
+      // Check if position is occupied by non-selected battalion (using original positions)
+      for (const b of gameState.battalions) {
+        if (b.x === newX && b.y === newY) {
+          // Check if this battalion is in the selected group by position comparison
+          const isSelected = battalions.some(selected => 
+            selected.x === b.x && selected.y === b.y && selected.type === b.type
+          );
+          if (!isSelected) {
+            canMove = false;
+            break;
+          }
+        }
+      }
+      
+      // Also check against other planned moves to prevent battalions moving to the same position
+      for (const plannedMove of plannedMoves) {
+        if (plannedMove.newX === newX && plannedMove.newY === newY) {
+          canMove = false;
+          break;
+        }
+      }
     }
-  });
+    
+    plannedMoves.push({ battalion, oldX, oldY, newX, newY, canMove });
+    
+    if (!canMove) {
+      allCanMove = false;
+      break;
+    }
+  }
+  
+  // Only execute moves if all battalions can move
+  if (allCanMove) {
+    for (const move of plannedMoves) {
+      move.battalion.x = move.newX;
+      move.battalion.y = move.newY;
+      console.log(`Moved ${move.battalion.type} battalion from (${move.oldX}, ${move.oldY}) to (${move.newX}, ${move.newY})`);
+    }
+  } else {
+    console.log(`Could not move battalion group - some positions blocked or out of bounds`);
+  }
   
   // Redraw battlefield
   const canvas = document.getElementById('battlefield');
@@ -312,8 +364,12 @@ function handleCanvasClick(e, canvas, tileSize) {
   
   console.log(`Clicked tile: (${x}, ${y})`);
   
-  // Handle remove mode
+  // Handle remove mode (not allowed in battle mode)
   if (gameState.currentMode === 'removing') {
+    if (!isActionAllowed('removing')) {
+      console.log('Removing troops not allowed in battle mode');
+      return;
+    }
     if (removeBattalion(x, y)) {
       // Battalion removed successfully
       drawGrid(canvas.getContext('2d'), canvas, tileSize);
@@ -369,11 +425,11 @@ function handleCanvasClick(e, canvas, tileSize) {
     } else {
       // Check if clicking on movement range tile
       if (gameState.selectedBattalion && gameState.movementRange.length > 0) {
-        const isInMovementRange = gameState.movementRange.some(pos => pos.x === x && pos.y === y);
-        if (isInMovementRange) {
+        const movementPosition = gameState.movementRange.find(pos => pos.x === x && pos.y === y);
+        if (movementPosition) {
           // Move all selected battalions (if multiple selected)
           if (gameState.selectedBattalions.length > 1) {
-            moveMultipleBattalions(gameState.selectedBattalions, x, y);
+            moveMultipleBattalions(gameState.selectedBattalions, x, y, movementPosition.referenceBattalion);
           } else {
             // Move single battalion
             moveBattalion(gameState.selectedBattalion, x, y);
@@ -414,12 +470,24 @@ function handleCanvasClick(e, canvas, tileSize) {
     return;
   }
   
-  // Handle battalion placement in create mode
+  // Handle battalion placement in create mode (not allowed in battle mode)
   if (gameState.currentMode === 'creating' && gameState.selectedArmyType) {
+    if (!isActionAllowed('creating')) {
+      console.log('Creating battalions not allowed in battle mode');
+      return;
+    }
+    
+    // Additional safety check: ensure we're not in a selection state
+    if (gameState.selectedBattalions.length > 0) {
+      console.warn('Warning: In create mode but have selected battalions, clearing selection');
+      gameState.selectedBattalion = null;
+      gameState.selectedBattalions = [];
+      gameState.movementRange = [];
+    }
+    
     if (placeBattalion(x, y)) {
       drawGrid(canvas.getContext('2d'), canvas, tileSize);
     }
-    return;
   }
   
   // Just highlight clicked tile for visualization
@@ -436,8 +504,15 @@ function handleCanvasClick(e, canvas, tileSize) {
 function handleMouseMove(e, canvas, tileSize) {
   const { x, y } = getTileCoordinates(e, canvas, tileSize);
   
-  // Handle placement preview for create, remove, and inspect modes
+  // Handle placement preview for create, remove, and inspect modes (with battle mode restrictions)
   if (gameState.currentMode === 'creating' || gameState.currentMode === 'removing' || gameState.currentMode === 'inspecting') {
+    // Check if action is allowed in current mode
+    if ((gameState.currentMode === 'creating' && !isActionAllowed('creating')) ||
+        (gameState.currentMode === 'removing' && !isActionAllowed('removing'))) {
+      removePlacementPreview();
+      return;
+    }
+    
     if (!gameState.placementPreview) {
       createPlacementPreview(canvas, tileSize);
     }
@@ -459,7 +534,7 @@ function handleMouseMove(e, canvas, tileSize) {
     // Remove placement preview when not in create/remove/inspect mode
     removePlacementPreview();
     
-    // Regular hover effect for viewing mode
+    // Regular hover effect for viewing and battle modes
     if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
       // Redraw grid to clear previous hover
       drawGrid(canvas.getContext('2d'), canvas, tileSize);
@@ -500,8 +575,13 @@ function handleMouseDown(e, canvas, tileSize) {
     return; // Don't proceed with other logic in multi-select mode
   }
   
-  // Only start dragging in create mode for placement
+  // Only start dragging in create mode for placement (not allowed in battle mode)
   if (gameState.currentMode !== 'creating') return;
+  
+  if (!isActionAllowed('creating')) {
+    console.log('Drag placement not allowed in battle mode');
+    return;
+  }
   
   gameState.isDragging = true;
   gameState.dragStartPos = { x, y };
@@ -530,7 +610,19 @@ function handleDragMove(e, canvas, tileSize) {
   // Don't place on same tile as drag start
   if (x === gameState.dragStartPos.x && y === gameState.dragStartPos.y) return;
   
-  // Place battalion if tile is different and not occupied
+  // Place battalion if tile is different and not occupied (not allowed in battle mode)
+  if (!isActionAllowed('creating')) {
+    return;
+  }
+  
+  // Safety check: ensure we're not in a selection state
+  if (gameState.selectedBattalions.length > 0) {
+    console.warn('Warning: In drag placement but have selected battalions, clearing selection');
+    gameState.selectedBattalion = null;
+    gameState.selectedBattalions = [];
+    gameState.movementRange = [];
+  }
+  
   if (placeBattalion(x, y)) {
     drawGrid(canvas.getContext('2d'), canvas, tileSize);
   }
@@ -551,6 +643,11 @@ function handleMouseUp(e) {
     
     // Move selected battalions to formation
     moveMultipleBattalions(gameState.selectedBattalions, mouseX, mouseY);
+    
+    // Clear selection and movement range
+    gameState.selectedBattalion = null;
+    gameState.selectedBattalions = [];
+    gameState.movementRange = [];
     
     // Clear preview
     removePlacementPreview();
@@ -577,7 +674,7 @@ function calculateMovementRange(battalion, isCtrlHeld = false, selectedBattalion
   const startY = battalion.y;
   
   if (isCtrlHeld && selectedBattalions && selectedBattalions.length > 1) {
-    // Multi-battalion movement: check if entire group can move to each position
+    // Multi-battalion movement: show movement range for all selected battalions
     const directions = [
       { dx: 0, dy: -1 },  // Up
       { dx: 0, dy: 1 },   // Down
@@ -585,33 +682,59 @@ function calculateMovementRange(battalion, isCtrlHeld = false, selectedBattalion
       { dx: 1, dy: 0 }    // Right
     ];
     
-    for (const dir of directions) {
-      for (let dist = 1; dist <= speed; dist++) {
-        const targetX = startX + dir.dx * dist;
-        const targetY = startY + dir.dy * dist;
-        
-        // Check if target position is within bounds
-        if (targetX >= 0 && targetX < GRID_SIZE && targetY >= 0 && targetY < GRID_SIZE) {
-          // Check if entire group can move to this position
-          const deltaX = targetX - startX;
-          const deltaY = targetY - startY;
-          let canMoveAll = true;
+    // For each selected battalion, calculate its individual movement range
+    for (const selectedBattalion of selectedBattalions) {
+      const battalionSpeed = selectedBattalion.speed;
+      const battalionStartX = selectedBattalion.x;
+      const battalionStartY = selectedBattalion.y;
+      
+      for (const dir of directions) {
+        for (let dist = 1; dist <= battalionSpeed; dist++) {
+          const targetX = battalionStartX + dir.dx * dist;
+          const targetY = battalionStartY + dir.dy * dist;
           
-          for (const otherBattalion of selectedBattalions) {
-            const newX = otherBattalion.x + deltaX;
-            const newY = otherBattalion.y + deltaY;
+          // Check if target position is within bounds
+          if (targetX >= 0 && targetX < GRID_SIZE && targetY >= 0 && targetY < GRID_SIZE) {
+            // Check if entire group can move to this position
+            const deltaX = targetX - battalionStartX;
+            const deltaY = targetY - battalionStartY;
+            let canMoveAll = true;
             
-            if (newX < 0 || newX >= GRID_SIZE || newY < 0 || newY >= GRID_SIZE || 
-                isTileOccupied(newX, newY)) {
-              canMoveAll = false;
+            // Check each battalion's target position
+            for (const otherBattalion of selectedBattalions) {
+              const newX = otherBattalion.x + deltaX;
+              const newY = otherBattalion.y + deltaY;
+              
+              // Check bounds
+              if (newX < 0 || newX >= GRID_SIZE || newY < 0 || newY >= GRID_SIZE) {
+                canMoveAll = false;
+                break;
+              }
+              
+              // Check if position is occupied by non-selected battalion
+              for (const b of gameState.battalions) {
+                if (b.x === newX && b.y === newY) {
+                  // Check if this battalion is in the selected group by position comparison
+                  const isSelected = selectedBattalions.some(selected => 
+                    selected.x === b.x && selected.y === b.y && selected.type === b.type
+                  );
+                  if (!isSelected) {
+                    canMoveAll = false;
+                    break;
+                  }
+                }
+              }
+              
+              if (!canMoveAll) break;
+            }
+            
+            if (canMoveAll) {
+              range.push({ x: targetX, y: targetY, referenceBattalion: selectedBattalion });
+            } else {
+              // Stop in this direction if group can't move further
               break;
             }
-          }
-          
-          if (canMoveAll) {
-            range.push({ x: targetX, y: targetY });
           } else {
-            // Stop in this direction if group can't move further
             break;
           }
         }
@@ -644,7 +767,7 @@ function calculateMovementRange(battalion, isCtrlHeld = false, selectedBattalion
       }
     }
   } else {
-    // Normal movement: all directions including diagonal
+    // Normal movement: all directions including diagonal with path checking
     for (let dx = -speed; dx <= speed; dx++) {
       for (let dy = -speed; dy <= speed; dy++) {
         const distance = Math.abs(dx) + Math.abs(dy); // Manhattan distance
@@ -654,9 +777,28 @@ function calculateMovementRange(battalion, isCtrlHeld = false, selectedBattalion
           
           // Check if within grid bounds
           if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
-            // Check if tile is not occupied
-            if (!isTileOccupied(x, y)) {
-              range.push({ x, y });
+            // Check if destination tile is not occupied by this battalion itself
+            if (!(x === startX && y === startY)) {
+              // Check if path is clear (prevent jumping over battalions)
+              let pathClear = true;
+              
+              // Check each step along the path
+              const steps = Math.max(Math.abs(dx), Math.abs(dy));
+              for (let step = 1; step <= steps; step++) {
+                const stepX = startX + Math.round((dx / steps) * step);
+                const stepY = startY + Math.round((dy / steps) * step);
+                
+                // Don't check the final destination here (that's checked below)
+                if (step < steps && isTileOccupied(stepX, stepY)) {
+                  pathClear = false;
+                  break;
+                }
+              }
+              
+              // Check if destination tile is not occupied
+              if (pathClear && !isTileOccupied(x, y)) {
+                range.push({ x, y });
+              }
             }
           }
         }
@@ -679,6 +821,48 @@ function drawMovementRange(ctx, tileSize) {
     ctx.fillRect(pos.x * tileSize, pos.y * tileSize, tileSize, tileSize);
     ctx.strokeRect(pos.x * tileSize, pos.y * tileSize, tileSize, tileSize);
   });
+}
+
+// Battle mode management functions
+function enterBattleMode() {
+  gameState.battleMode = true;
+  gameState.currentMode = 'battle';
+  
+  // Clear any existing selections
+  gameState.selectedBattalion = null;
+  gameState.selectedBattalions = [];
+  gameState.movementRange = [];
+  
+  // Hide battalion creation section if open
+  document.getElementById('battalionCreationSection').classList.add('hidden');
+  
+  console.log('Entered Battle Mode - Only movement allowed');
+}
+
+function exitBattleMode() {
+  gameState.battleMode = false;
+  gameState.currentMode = 'viewing';
+  
+  // Clear any existing selections
+  gameState.selectedBattalion = null;
+  gameState.selectedBattalions = [];
+  gameState.movementRange = [];
+  
+  console.log('Exited Battle Mode');
+}
+
+function isInBattleMode() {
+  return gameState.battleMode;
+}
+
+// Check if an action is allowed in current mode
+function isActionAllowed(action) {
+  if (isInBattleMode()) {
+    // In battle mode, only movement is allowed
+    return action === 'movement';
+  }
+  // In normal mode, all actions are allowed
+  return true;
 }
 
 // Update troop counts

@@ -33,6 +33,9 @@ function updateCurrentModeDisplay() {
     case 'removing':
       modeDisplay.textContent = 'Removing Troops - Click to Remove';
       break;
+    case 'battle':
+      modeDisplay.textContent = 'Battle Phase - Movement Only';
+      break;
     default:
       modeDisplay.textContent = 'Unknown Mode';
   }
@@ -57,8 +60,8 @@ function showBattalionModal(battalion) {
   document.getElementById('modalSpeed').value = battalion.speed;
   document.getElementById('modalPosition').textContent = `(${battalion.x}, ${battalion.y})`;
   
-  // Enable/disable editing based on mode
-  const isEditable = gameState.currentMode === 'inspecting';
+  // Enable/disable editing based on mode (not allowed in battle mode)
+  const isEditable = gameState.currentMode === 'inspecting' && !isInBattleMode();
   document.getElementById('modalType').disabled = !isEditable;
   document.getElementById('modalArmyType').disabled = !isEditable;
   document.getElementById('modalSoldiers').disabled = !isEditable;
@@ -83,8 +86,12 @@ function hideBattalionModal() {
 
 // Setup event listeners
 function setupEventListeners(canvas) {
-  // Create Army button
+  // Create Army button (restricted in battle mode)
   document.getElementById('createArmyBtn').addEventListener('click', function() {
+    if (isInBattleMode()) {
+      showNotification('Cannot create armies during battle phase', 'error');
+      return;
+    }
     // Show battalion creation section
     document.getElementById('battalionCreationSection').classList.remove('hidden');
     gameState.currentMode = 'creating';
@@ -109,8 +116,12 @@ function setupEventListeners(canvas) {
   });
   
     
-  // Remove Troops button
+  // Remove Troops button (restricted in battle mode)
   document.getElementById('removeTroopsBtn').addEventListener('click', function() {
+    if (isInBattleMode()) {
+      showNotification('Cannot remove troops during battle phase', 'error');
+      return;
+    }
     // Toggle remove mode
     if (gameState.currentMode === 'removing') {
       gameState.currentMode = 'viewing';
@@ -201,9 +212,48 @@ function setupEventListeners(canvas) {
     }
   });
   
-  // Import Army button
+  // Import Army button (restricted in battle mode)
   document.getElementById('importArmyBtn').addEventListener('click', function() {
+    if (isInBattleMode()) {
+      showNotification('Cannot import armies during battle phase', 'error');
+      return;
+    }
     document.getElementById('importFileInput').click();
+  });
+  
+  // Battle Mode button
+  document.getElementById('battleModeBtn').addEventListener('click', function() {
+    if (isInBattleMode()) {
+      // Exit battle mode
+      exitBattleMode();
+      this.textContent = 'Start Battle';
+      this.classList.remove('battle-active');
+      
+      // Show restricted buttons
+      document.getElementById('createArmyBtn').style.display = 'block';
+      document.getElementById('removeTroopsBtn').style.display = 'block';
+      document.getElementById('importArmyBtn').style.display = 'block';
+      
+      showNotification('Battle phase ended', 'success');
+    } else {
+      // Enter battle mode
+      enterBattleMode();
+      this.textContent = 'End Battle';
+      this.classList.add('battle-active');
+      
+      // Hide restricted buttons
+      document.getElementById('createArmyBtn').style.display = 'none';
+      document.getElementById('removeTroopsBtn').style.display = 'none';
+      document.getElementById('importArmyBtn').style.display = 'none';
+      
+      // Reset other mode buttons
+      document.getElementById('inspectTroopsBtn').classList.remove('active');
+      document.getElementById('inspectTroopsBtn').classList.remove('inspect-active');
+      document.getElementById('removeTroopsBtn').classList.remove('active');
+      
+      showNotification('Battle phase started - Only movement allowed', 'success');
+    }
+    updateCurrentModeDisplay();
   });
   
   // Import file input change handler

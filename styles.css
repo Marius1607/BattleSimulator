@@ -147,6 +147,22 @@ body {
   background: #b91c1c;
 }
 
+.btn.warning {
+  background: #f59e0b;
+}
+
+.btn.warning:hover {
+  background: #d97706;
+}
+
+.btn.warning.battle-active {
+  background: #dc2626;
+}
+
+.btn.warning.battle-active:hover {
+  background: #b91c1c;
+}
+
 .btn:disabled {
   background: #666;
   cursor: not-allowed;
