@@ -108,6 +108,7 @@ function setupEventListeners(canvas) {
     updateCurrentModeDisplay();
   });
   
+    
   // Remove Troops button
   document.getElementById('removeTroopsBtn').addEventListener('click', function() {
     // Toggle remove mode
@@ -287,8 +288,6 @@ function setupEventListeners(canvas) {
   canvas.addEventListener('mousemove', function(e) {
     if (gameState.isDragging) {
       handleDragMove(e, canvas, calculateTileSize());
-    } else {
-      handleMouseMove(e, canvas, calculateTileSize());
     }
   });
   
@@ -296,9 +295,13 @@ function setupEventListeners(canvas) {
     handleMouseDown(e, canvas, calculateTileSize());
   });
   
-  canvas.addEventListener('mouseup', handleMouseUp);
+  canvas.addEventListener('mouseup', function(e) {
+    handleMouseUp(e);
+  });
   
-  canvas.addEventListener('mouseleave', handleMouseLeave);
+  canvas.addEventListener('mouseleave', function(e) {
+    handleMouseLeave(e);
+  });
   
   // Window resize
   window.addEventListener('resize', function() {
