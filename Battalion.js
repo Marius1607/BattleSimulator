@@ -10,6 +10,7 @@ class Battalion {
     morale = 5, // 1-10
     speed = 3, // 1-10
     soldiers = 100,
+    hasComamnder = true,
     active = true
   } = {}) {
     this.x = x;
@@ -19,6 +20,7 @@ class Battalion {
     this.discipline = discipline; 
     this.equipment = equipment;
     this.range = range;
+    this.hasComamnder = hasCommander;
     this.morale = morale;
     this.speed = speed;
     this.soldiers = soldiers;
