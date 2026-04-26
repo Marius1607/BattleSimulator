@@ -1,6 +1,10 @@
 // Medieval Battle Simulator - UI Controller
 
-// Update battalion preview
+// ==================== PREVIEW MANAGEMENT ====================
+
+/**
+ * Update the battalion preview display with current form values
+ */
 function updateBattalionPreview() {
   const typeNames = {
     'footsoldiers': 'Foot Soldiers',
@@ -8,211 +12,336 @@ function updateBattalionPreview() {
     'ranged': 'Ranged'
   };
   
-  document.getElementById('previewType').textContent = typeNames[gameState.selectedUnitType] || 'Foot Soldiers';
-  document.getElementById('previewSoldiers').textContent = document.getElementById('soldiersInput').value;
-  document.getElementById('previewDiscipline').textContent = document.getElementById('disciplineInput').value;
-  document.getElementById('previewEquipment').textContent = document.getElementById('equipmentInput').value;
-  document.getElementById('previewRange').textContent = document.getElementById('rangeInput').value;
-  document.getElementById('previewMorale').textContent = document.getElementById('moraleInput').value;
-  document.getElementById('previewSpeed').textContent = document.getElementById('speedInput').value;
+  const previewElements = {
+    previewType: typeNames[gameState.selectedUnitType] || 'Foot Soldiers',
+    previewSoldiers: document.getElementById('soldiersInput').value,
+    previewDiscipline: document.getElementById('disciplineInput').value,
+    previewEquipment: document.getElementById('equipmentInput').value,
+    previewRange: document.getElementById('rangeInput').value,
+    previewMorale: document.getElementById('moraleInput').value,
+    previewSpeed: document.getElementById('speedInput').value
+  };
+  
+  Object.entries(previewElements).forEach(([elementId, value]) => {
+    document.getElementById(elementId).textContent = value;
+  });
 }
 
-// Update current mode display
+// ==================== MODE DISPLAY ====================
+
+/**
+ * Update the current mode display text
+ */
 function updateCurrentModeDisplay() {
   const modeDisplay = document.getElementById('currentModeDisplay');
-  switch(gameState.currentMode) {
-    case 'viewing':
-      modeDisplay.textContent = 'Viewing Battlefield';
-      break;
-    case 'creating':
-      modeDisplay.textContent = 'Creating Battalion - Click or Drag to Place';
-      break;
-    case 'inspecting':
-      modeDisplay.textContent = 'Inspecting Troops - Click to View Stats';
-      break;
-    case 'removing':
-      modeDisplay.textContent = 'Removing Troops - Click to Remove';
-      break;
-    case 'battle':
-      modeDisplay.textContent = 'Battle Phase - Movement Only';
-      break;
-    default:
-      modeDisplay.textContent = 'Unknown Mode';
-  }
+  const modeTexts = {
+    'viewing': 'Viewing Battlefield',
+    'creating': 'Creating Battalion - Click or Drag to Place',
+    'inspecting': 'Inspecting Troops - Click to View Stats',
+    'removing': 'Removing Troops - Click to Remove',
+    'battle': 'Battle Phase - Movement Only'
+  };
+  
+  modeDisplay.textContent = modeTexts[gameState.currentMode] || 'Unknown Mode';
 }
+
+// ==================== MODAL MANAGEMENT ====================
 
 // Current battalion being edited
 let currentEditingBattalion = null;
 
-// Show battalion modal with stats
+/**
+ * Show battalion modal with current battalion stats
+ * @param {Battalion} battalion - Battalion to display
+ */
 function showBattalionModal(battalion) {
-  const modal = document.getElementById('battalionModal');
   currentEditingBattalion = battalion;
   
-  // Update modal content
-  document.getElementById('modalType').value = battalion.type;
-  document.getElementById('modalArmyType').value = battalion.armyType;
-  document.getElementById('modalSoldiers').value = battalion.soldiers;
-  document.getElementById('modalDiscipline').value = battalion.discipline;
-  document.getElementById('modalEquipment').value = battalion.equipment;
-  document.getElementById('modalRange').value = battalion.range;
-  document.getElementById('modalMorale').value = battalion.morale;
-  document.getElementById('modalSpeed').value = battalion.speed;
-  document.getElementById('modalPosition').textContent = `(${battalion.x}, ${battalion.y})`;
-  
-  // Enable/disable editing based on mode (not allowed in battle mode)
-  const isEditable = gameState.currentMode === 'inspecting' && !isInBattleMode();
-  document.getElementById('modalType').disabled = !isEditable;
-  document.getElementById('modalArmyType').disabled = !isEditable;
-  document.getElementById('modalSoldiers').disabled = !isEditable;
-  document.getElementById('modalDiscipline').disabled = !isEditable;
-  document.getElementById('modalEquipment').disabled = !isEditable;
-  document.getElementById('modalRange').disabled = !isEditable;
-  document.getElementById('modalMorale').disabled = !isEditable;
-  document.getElementById('modalSpeed').disabled = !isEditable;
-  
-  // Show/hide action buttons based on mode
-  document.querySelector('.modal-actions').style.display = isEditable ? 'flex' : 'none';
-  
-  // Show modal
-  modal.style.display = 'block';
+  updateModalContent(battalion);
+  setModalEditMode();
+  document.getElementById('battalionModal').style.display = 'block';
 }
 
-// Hide battalion modal
+/**
+ * Hide the battalion modal
+ */
 function hideBattalionModal() {
-  const modal = document.getElementById('battalionModal');
-  modal.style.display = 'none';
+  document.getElementById('battalionModal').style.display = 'none';
 }
 
-// Setup event listeners
+/**
+ * Update modal content with battalion data
+ * @param {Battalion} battalion - Battalion data
+ */
+function updateModalContent(battalion) {
+  const modalFields = {
+    modalType: battalion.type,
+    modalArmyType: battalion.armyType,
+    modalSoldiers: battalion.soldiers,
+    modalDiscipline: battalion.discipline,
+    modalEquipment: battalion.equipment,
+    modalRange: battalion.range,
+    modalMorale: battalion.morale,
+    modalSpeed: battalion.speed
+  };
+  
+  Object.entries(modalFields).forEach(([fieldId, value]) => {
+    document.getElementById(fieldId).value = value;
+  });
+  
+  document.getElementById('modalPosition').textContent = `(${battalion.x}, ${battalion.y})`;
+}
+
+/**
+ * Set modal editing mode based on current game state
+ */
+function setModalEditMode() {
+  const isEditable = gameState.currentMode === 'inspecting' && !isInBattleMode();
+  const editableFields = [
+    'modalType', 'modalArmyType', 'modalSoldiers',
+    'modalDiscipline', 'modalEquipment', 'modalRange',
+    'modalMorale', 'modalSpeed'
+  ];
+  
+  editableFields.forEach(fieldId => {
+    document.getElementById(fieldId).disabled = !isEditable;
+  });
+  
+  document.querySelector('.modal-actions').style.display = isEditable ? 'flex' : 'none';
+}
+
+// ==================== EVENT LISTENERS ====================
+
+/**
+ * Setup all event listeners for the UI
+ * @param {HTMLCanvasElement} canvas - The battlefield canvas
+ */
 function setupEventListeners(canvas) {
-  // Create Army button (restricted in battle mode)
+  setupArmyManagementButtons();
+  setupBattalionCreationControls();
+  setupModalControls();
+  setupCanvasEventListeners(canvas);
+  setupWindowEventListeners(canvas);
+}
+
+/**
+ * Setup army management button event listeners
+ */
+function setupArmyManagementButtons() {
+  // Create Army button
   document.getElementById('createArmyBtn').addEventListener('click', function() {
     if (isInBattleMode()) {
       showNotification('Cannot create armies during battle phase', 'error');
       return;
     }
-    // Show battalion creation section
-    document.getElementById('battalionCreationSection').classList.remove('hidden');
-    gameState.currentMode = 'creating';
-    updateCurrentModeDisplay();
+    enterCreateMode();
   });
   
   // Inspect Troops button
   document.getElementById('inspectTroopsBtn').addEventListener('click', function() {
-    // Toggle inspect mode
-    if (gameState.currentMode === 'inspecting') {
-      gameState.currentMode = 'viewing';
-      this.classList.remove('active');
-      this.classList.remove('inspect-active');
-    } else {
-      // Hide battalion creation section if open
-      document.getElementById('battalionCreationSection').classList.add('hidden');
-      gameState.currentMode = 'inspecting';
-      this.classList.add('active');
-      this.classList.add('inspect-active');
-    }
-    updateCurrentModeDisplay();
+    toggleInspectMode();
   });
   
-    
-  // Remove Troops button (restricted in battle mode)
+  // Remove Troops button
   document.getElementById('removeTroopsBtn').addEventListener('click', function() {
     if (isInBattleMode()) {
       showNotification('Cannot remove troops during battle phase', 'error');
       return;
     }
-    // Toggle remove mode
-    if (gameState.currentMode === 'removing') {
-      gameState.currentMode = 'viewing';
-      this.classList.remove('active');
-    } else {
-      // Hide battalion creation section if open
-      document.getElementById('battalionCreationSection').classList.add('hidden');
-      gameState.currentMode = 'removing';
-      this.classList.add('active');
-    }
-    updateCurrentModeDisplay();
+    toggleRemoveMode();
   });
+}
+
+/**
+ * Enter battalion creation mode
+ */
+function enterCreateMode() {
+  document.getElementById('battalionCreationSection').classList.remove('hidden');
+  gameState.currentMode = 'creating';
+  updateCurrentModeDisplay();
+}
+
+/**
+ * Toggle inspect mode on/off
+ */
+function toggleInspectMode() {
+  const button = document.getElementById('inspectTroopsBtn');
   
-  // Army type buttons
+  if (gameState.currentMode === 'inspecting') {
+    gameState.currentMode = 'viewing';
+    button.classList.remove('active', 'inspect-active');
+  } else {
+    document.getElementById('battalionCreationSection').classList.add('hidden');
+    gameState.currentMode = 'inspecting';
+    button.classList.add('active', 'inspect-active');
+  }
+  
+  updateCurrentModeDisplay();
+}
+
+/**
+ * Toggle remove mode on/off
+ */
+function toggleRemoveMode() {
+  const button = document.getElementById('removeTroopsBtn');
+  
+  if (gameState.currentMode === 'removing') {
+    gameState.currentMode = 'viewing';
+    button.classList.remove('active');
+  } else {
+    document.getElementById('battalionCreationSection').classList.add('hidden');
+    gameState.currentMode = 'removing';
+    button.classList.add('active');
+  }
+  
+  updateCurrentModeDisplay();
+}
+  
+/**
+ * Setup battalion creation control event listeners
+ */
+function setupBattalionCreationControls() {
+  setupArmyTypeButtons();
+  setupUnitTypeSelector();
+  setupInputHandlers();
+  setupCreationActions();
+}
+
+/**
+ * Setup army type selection buttons
+ */
+function setupArmyTypeButtons() {
+  // Allied button
   document.getElementById('alliedBtn').addEventListener('click', function() {
-    gameState.selectedArmyType = 'allied';
-    this.classList.add('allied-selected');
-    this.classList.remove('enemy-selected');
-    document.getElementById('enemyBtn').classList.remove('allied-selected');
-    document.getElementById('enemyBtn').classList.add('enemy-selected');
-    
-    // Update unit type selector colors
-    document.querySelector('.unit-type-selector').classList.remove('enemy-army');
-    
-    updateBattalionPreview();
+    selectArmyType('allied', this);
   });
   
+  // Enemy button
   document.getElementById('enemyBtn').addEventListener('click', function() {
-    gameState.selectedArmyType = 'enemy';
-    this.classList.add('enemy-selected');
-    this.classList.remove('allied-selected');
-    document.getElementById('alliedBtn').classList.remove('allied-selected');
-    document.getElementById('alliedBtn').classList.remove('enemy-selected');
-    
-    // Update unit type selector colors
-    document.querySelector('.unit-type-selector').classList.add('enemy-army');
-    
-    updateBattalionPreview();
+    selectArmyType('enemy', this);
   });
+}
+
+/**
+ * Select army type and update UI
+ * @param {string} armyType - 'allied' or 'enemy'
+ * @param {HTMLElement} button - The clicked button
+ */
+function selectArmyType(armyType, button) {
+  gameState.selectedArmyType = armyType;
+  updateArmyTypeButtonStyles(button);
+  updateBattalionPreview();
+}
+
+/**
+ * Update army type button visual styles
+ * @param {HTMLElement} selectedButton - The selected button
+ */
+function updateArmyTypeButtonStyles(selectedButton) {
+  const alliedBtn = document.getElementById('alliedBtn');
+  const enemyBtn = document.getElementById('enemyBtn');
+  const unitSelector = document.querySelector('.unit-type-selector');
   
-  // Unit type selector
+  if (selectedButton === alliedBtn) {
+    alliedBtn.classList.add('allied-selected');
+    alliedBtn.classList.remove('enemy-selected');
+    enemyBtn.classList.remove('allied-selected');
+    enemyBtn.classList.add('enemy-selected');
+    unitSelector.classList.remove('enemy-army');
+  } else {
+    enemyBtn.classList.add('enemy-selected');
+    enemyBtn.classList.remove('allied-selected');
+    alliedBtn.classList.remove('allied-selected');
+    alliedBtn.classList.remove('enemy-selected');
+    unitSelector.classList.add('enemy-army');
+  }
+}
+
+/**
+ * Setup unit type selector
+ */
+function setupUnitTypeSelector() {
   document.querySelectorAll('.unit-type-btn').forEach(btn => {
     btn.addEventListener('click', function() {
-      document.querySelectorAll('.unit-type-btn').forEach(b => b.classList.remove('active'));
-      this.classList.add('active');
-      gameState.selectedUnitType = this.dataset.type;
-      updateBattalionPreview();
+      selectUnitType(this);
     });
   });
+}
+
+/**
+ * Select unit type and update UI
+ * @param {HTMLElement} button - The clicked unit type button
+ */
+function selectUnitType(button) {
+  document.querySelectorAll('.unit-type-btn').forEach(b => b.classList.remove('active'));
+  button.classList.add('active');
+  gameState.selectedUnitType = button.dataset.type;
+  updateBattalionPreview();
+}
+
+/**
+ * Setup input field change handlers
+ */
+function setupInputHandlers() {
+  const inputIds = ['soldiersInput', 'disciplineInput', 'equipmentInput', 'rangeInput', 'moraleInput', 'speedInput'];
   
-  // Input change handlers
-  ['soldiersInput', 'disciplineInput', 'equipmentInput', 'rangeInput', 'moraleInput', 'speedInput'].forEach(inputId => {
+  inputIds.forEach(inputId => {
     document.getElementById(inputId).addEventListener('input', updateBattalionPreview);
   });
-  
+}
+
+/**
+ * Setup creation action buttons
+ */
+function setupCreationActions() {
   // Cancel battalion creation
   document.getElementById('cancelBattalionBtn').addEventListener('click', function() {
-    gameState.currentMode = 'viewing';
-    gameState.selectedArmyType = null;
-    document.getElementById('battalionCreationSection').classList.add('hidden');
-    
-    // Reset army type buttons
-    document.getElementById('alliedBtn').classList.remove('allied-selected');
-    document.getElementById('alliedBtn').classList.remove('enemy-selected');
-    document.getElementById('enemyBtn').classList.remove('allied-selected');
-    document.getElementById('enemyBtn').classList.add('enemy-selected');
-    
-    // Reset remove button
-    document.getElementById('removeTroopsBtn').classList.remove('active');
-    
-    // Reset inspect button
-    document.getElementById('inspectTroopsBtn').classList.remove('active');
-    document.getElementById('inspectTroopsBtn').classList.remove('inspect-active');
-    
-    updateCurrentModeDisplay();
+    cancelBattalionCreation();
   });
+}
+
+/**
+ * Cancel battalion creation and reset UI
+ */
+function cancelBattalionCreation() {
+  gameState.currentMode = 'viewing';
+  gameState.selectedArmyType = null;
+  document.getElementById('battalionCreationSection').classList.add('hidden');
+  resetArmyTypeButtons();
+  resetModeButtons();
+  updateCurrentModeDisplay();
+}
+
+/**
+ * Reset army type button styles
+ */
+function resetArmyTypeButtons() {
+  const alliedBtn = document.getElementById('alliedBtn');
+  const enemyBtn = document.getElementById('enemyBtn');
   
+  alliedBtn.classList.remove('allied-selected', 'enemy-selected');
+  enemyBtn.classList.remove('allied-selected');
+  enemyBtn.classList.add('enemy-selected');
+}
+
+/**
+ * Reset mode button states
+ */
+function resetModeButtons() {
+  document.getElementById('removeTroopsBtn').classList.remove('active');
+  document.getElementById('inspectTroopsBtn').classList.remove('active', 'inspect-active');
+}
+
+/**
+ * Setup import/export controls
+ */
+function setupImportExportControls() {
   // Export Army button
   document.getElementById('exportArmyBtn').addEventListener('click', function() {
-    try {
-      const jsonData = exportBattlefield();
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const filename = `battlefield_${timestamp}.json`;
-      downloadJSON(filename, jsonData);
-      showNotification('Battlefield exported successfully!', 'success');
-    } catch (error) {
-      showNotification('Export failed: ' + error.message, 'error');
-    }
+    exportBattlefieldData();
   });
   
-  // Import Army button (restricted in battle mode)
+  // Import Army button
   document.getElementById('importArmyBtn').addEventListener('click', function() {
     if (isInBattleMode()) {
       showNotification('Cannot import armies during battle phase', 'error');
@@ -220,7 +349,27 @@ function setupEventListeners(canvas) {
     }
     document.getElementById('importFileInput').click();
   });
-  
+}
+
+/**
+ * Export battlefield data to JSON file
+ */
+function exportBattlefieldData() {
+  try {
+    const jsonData = exportBattlefield();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const filename = `battlefield_${timestamp}.json`;
+    downloadJSON(filename, jsonData);
+    showNotification('Battlefield exported successfully!', 'success');
+  } catch (error) {
+    showNotification('Export failed: ' + error.message, 'error');
+  }
+}
+
+/**
+ * Setup battle mode controls
+ */
+function setupBattleModeControls() {
   // Battle Mode button
   document.getElementById('battleModeBtn').addEventListener('click', function() {
     if (isInBattleMode()) {
@@ -255,34 +404,47 @@ function setupEventListeners(canvas) {
     }
     updateCurrentModeDisplay();
   });
-  
-  // Import file input change handler
+}
+
+/**
+ * Setup import file handling
+ */
+function setupImportFileHandling() {
   document.getElementById('importFileInput').addEventListener('change', async function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    try {
-      const jsonData = await readJSONFile(file);
-      const result = importBattlefield(jsonData);
-      
-      if (result.success) {
-        // Redraw the battlefield
-        const canvas = document.getElementById('battlefield');
-        const tileSize = calculateTileSize();
-        drawGrid(canvas.getContext('2d'), canvas, tileSize);
-        
-        showNotification(result.message, 'success');
-      } else {
-        showNotification(result.message, 'error');
-      }
-    } catch (error) {
-      showNotification('Import failed: ' + error.message, 'error');
-    }
-    
-    // Reset file input
-    this.value = '';
+    await handleImportFile(e);
   });
+}
+
+/**
+ * Handle import file selection and processing
+ * @param {Event} e - File input change event
+ */
+async function handleImportFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
   
+  try {
+    const jsonData = await readJSONFile(file);
+    const result = importBattlefield(jsonData);
+    
+    if (result.success) {
+      redrawBattlefield();
+      showNotification(result.message, 'success');
+    } else {
+      showNotification(result.message, 'error');
+    }
+  } catch (error) {
+    showNotification('Import failed: ' + error.message, 'error');
+  }
+  
+  // Reset file input
+  e.target.value = '';
+}
+  
+/**
+ * Setup modal control event listeners
+ */
+function setupModalControls() {
   // Modal close button
   document.querySelector('.modal-close').addEventListener('click', hideBattalionModal);
   
@@ -291,46 +453,51 @@ function setupEventListeners(canvas) {
   
   // Save edit button
   document.getElementById('saveEditBtn').addEventListener('click', function() {
-    if (!currentEditingBattalion) return;
-    
-    // Update battalion with new values
-    currentEditingBattalion.type = document.getElementById('modalType').value;
-    currentEditingBattalion.armyType = document.getElementById('modalArmyType').value;
-    currentEditingBattalion.soldiers = parseInt(document.getElementById('modalSoldiers').value);
-    currentEditingBattalion.discipline = parseInt(document.getElementById('modalDiscipline').value);
-    currentEditingBattalion.equipment = parseInt(document.getElementById('modalEquipment').value);
-    currentEditingBattalion.range = parseInt(document.getElementById('modalRange').value);
-    currentEditingBattalion.morale = parseInt(document.getElementById('modalMorale').value);
-    currentEditingBattalion.speed = parseInt(document.getElementById('modalSpeed').value);
-    
-    // Update army counts
-    updateArmyCounts();
-    
-    // Redraw battlefield
-    const canvas = document.getElementById('battlefield');
-    const tileSize = calculateTileSize();
-    drawGrid(canvas.getContext('2d'), canvas, tileSize);
-    
-    // Show notification
-    showNotification('Battalion updated successfully!', 'success');
-    
-    // Close modal
-    hideBattalionModal();
+    saveBattalionEdits();
   });
+}
+
+/**
+ * Save battalion edits from modal
+ */
+function saveBattalionEdits() {
+  if (!currentEditingBattalion) return;
   
-  // Close modal when clicking outside
-  window.addEventListener('click', function(e) {
-    const modal = document.getElementById('battalionModal');
-    if (e.target === modal) {
-      hideBattalionModal();
-    }
-    // Don't change mode when clicking outside modal in inspect mode
-    if (modal.style.display === 'block' && gameState.currentMode === 'inspecting') {
-      e.stopPropagation();
-    }
+  updateBattalionFromModal();
+  updateArmyCounts();
+  redrawBattlefield();
+  showNotification('Battalion updated successfully!', 'success');
+  hideBattalionModal();
+}
+
+/**
+ * Update battalion data from modal inputs
+ */
+function updateBattalionFromModal() {
+  const modalFields = {
+    type: 'modalType',
+    armyType: 'modalArmyType',
+    soldiers: 'modalSoldiers',
+    discipline: 'modalDiscipline',
+    equipment: 'modalEquipment',
+    range: 'modalRange',
+    morale: 'modalMorale',
+    speed: 'modalSpeed'
+  };
+  
+  Object.entries(modalFields).forEach(([property, fieldId]) => {
+    const value = document.getElementById(fieldId).value;
+    currentEditingBattalion[property] = property === 'type' || property === 'armyType' 
+      ? value 
+      : parseInt(value);
   });
+}
   
-  // Canvas event listeners
+/**
+ * Setup canvas event listeners
+ * @param {HTMLCanvasElement} canvas - The battlefield canvas
+ */
+function setupCanvasEventListeners(canvas) {
   canvas.addEventListener('click', function(e) {
     handleCanvasClick(e, canvas, calculateTileSize());
   });
@@ -352,30 +519,88 @@ function setupEventListeners(canvas) {
   canvas.addEventListener('mouseleave', function(e) {
     handleMouseLeave(e);
   });
+}
+
+/**
+ * Setup window event listeners
+ * @param {HTMLCanvasElement} canvas - The battlefield canvas
+ */
+function setupWindowEventListeners(canvas) {
+  // Close modal when clicking outside
+  window.addEventListener('click', function(e) {
+    handleModalOutsideClick(e);
+  });
   
   // Window resize
   window.addEventListener('resize', function() {
-    const { tileSize } = resizeCanvas(canvas);
-    drawGrid(canvas.getContext('2d'), canvas, tileSize);
+    handleWindowResize(canvas);
   });
 }
 
-// Initialize UI
-function initializeUI(canvas) {
-  // Setup event listeners
-  setupEventListeners(canvas);
+/**
+ * Handle clicks outside the modal
+ * @param {Event} e - Click event
+ */
+function handleModalOutsideClick(e) {
+  const modal = document.getElementById('battalionModal');
+  if (e.target === modal) {
+    hideBattalionModal();
+  }
   
-  // Preselect Allied army type
+  // Don't change mode when clicking outside modal in inspect mode
+  if (modal.style.display === 'block' && gameState.currentMode === 'inspecting') {
+    e.stopPropagation();
+  }
+}
+
+/**
+ * Handle window resize events
+ * @param {HTMLCanvasElement} canvas - The battlefield canvas
+ */
+function handleWindowResize(canvas) {
+  const { tileSize } = resizeCanvas(canvas);
+  drawGrid(canvas.getContext('2d'), canvas, tileSize);
+}
+
+// ==================== INITIALIZATION ====================
+
+/**
+ * Initialize the UI components
+ * @param {HTMLCanvasElement} canvas - The battlefield canvas
+ */
+function initializeUI(canvas) {
+  setupEventListeners(canvas);
+  setupImportExportControls();
+  setupImportFileHandling();
+  setupBattleModeControls();
+  initializeDefaultState();
+  initializeDisplays();
+  setupCanvas(canvas);
+}
+
+/**
+ * Initialize default game state
+ */
+function initializeDefaultState() {
   gameState.selectedArmyType = 'allied';
   document.getElementById('alliedBtn').classList.add('allied-selected');
   document.getElementById('enemyBtn').classList.add('enemy-selected');
-  
-  // Initialize displays
+}
+
+/**
+ * Initialize UI displays
+ */
+function initializeDisplays() {
   updateBattalionPreview();
   updateCurrentModeDisplay();
   updateArmyCounts();
-  
-  // Setup canvas size
+}
+
+/**
+ * Setup canvas with initial size and drawing
+ * @param {HTMLCanvasElement} canvas - The battlefield canvas
+ */
+function setupCanvas(canvas) {
   const { tileSize } = resizeCanvas(canvas);
   drawGrid(canvas.getContext('2d'), canvas, tileSize);
 }
