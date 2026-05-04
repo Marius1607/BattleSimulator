@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>BattleField</title>
+    <style>
+      #battleField {
+        display: grid;
+        grid-template-columns: repeat(64, 1fr);
+        width: 100vmin;
+        height: 100vmin;
+        gap: 1px;
+      }
+
+      .cell {
+        background-color: lightgray;
+        aspect-ratio: 1 / 1; /* makes perfect squares */
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="battleField"></div>
+    <div id="commandPanel"></div>
+
+    <script>
+      const screenHeight = window.innerHeight;
+      const BF_SIZE = 64;
+      const size = screenHeight / (BF_SIZE - 2);
+
+      const battleField = document.getElementById("battleField");
+
+      for (let row = 0; row < BF_SIZE; row++) {
+        for (let col = 0; col < BF_SIZE; col++) {
+          const cell = document.createElement("div");
+          cell.classList.add("cell");
+
+          cell.style.height = `${size}px`;
+          cell.style.width = `${size}px`;
+
+          battleField.appendChild(cell);
+        }
+      }
+    </script>
+  </body>
+</html>
