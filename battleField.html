@@ -3,6 +3,10 @@
   <head>
     <title>BattleField</title>
     <style>
+      body {
+        margin: 0px;
+      }
+
       #battleField {
         display: grid;
         grid-template-columns: repeat(64, 1fr);
@@ -12,20 +16,23 @@
       }
 
       .cell {
-        background-color: lightgray;
+        background-color: #2ecc71;
         aspect-ratio: 1 / 1; /* makes perfect squares */
+      }
+
+      .cell:hover {
+        background-color: #1e8449; 
       }
     </style>
   </head>
 
   <body>
-    <div id="battleField"></div>
-    <div id="commandPanel"></div>
-
+    <div id="container">
+      <div id="battleField"></div>
+      <div id="commandPanel"></div>
+    </div>
     <script>
-      const screenHeight = window.innerHeight;
       const BF_SIZE = 64;
-      const size = screenHeight / (BF_SIZE - 2);
 
       const battleField = document.getElementById("battleField");
 
@@ -33,10 +40,6 @@
         for (let col = 0; col < BF_SIZE; col++) {
           const cell = document.createElement("div");
           cell.classList.add("cell");
-
-          cell.style.height = `${size}px`;
-          cell.style.width = `${size}px`;
-
           battleField.appendChild(cell);
         }
       }
